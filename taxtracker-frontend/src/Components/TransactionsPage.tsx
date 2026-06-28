@@ -8,6 +8,7 @@ export const TransactionsPage = () => {
   const [totalRecords, setTotalRecords] = useState(0);
   const [page, setPage] = useState(0);
   const [filters, setFilters] = useState<any>({});
+  const [financialYears, setFinancialYears] = useState<string[]>([]);
   
   // For Add Transaction form
   const { register: regAdd, handleSubmit: handleAddSubmit, reset: resetAdd, formState: { errors: addErrors } } = useForm();
@@ -26,6 +27,18 @@ export const TransactionsPage = () => {
   useEffect(() => {
     fetchTransactions();
   }, [fetchTransactions]);
+
+  useEffect(() => {
+    const fetchYears = async () => {
+      try {
+        const years = await transactionApi.getAvailableFinancialYears();
+        setFinancialYears(years);
+      } catch (err) {
+        console.error('Failed to fetch years', err);
+      }
+    };
+    fetchYears();
+  }, []);
 
   const onAddSubmit = async (data: any) => {
     try {
@@ -76,6 +89,8 @@ export const TransactionsPage = () => {
           <select className="form-select" value={downloadFormat} onChange={(e) => setDownloadFormat(e.target.value)}>
             <option value="JSON">JSON</option>
             <option value="CSV">CSV</option>
+            <option value="PDF">PDF</option>
+            <option value="XLSX">Excel (XLSX)</option>
           </select>
           <button className="btn btn-outline-primary" onClick={downloadData}>Download</button>
         </div>
@@ -120,9 +135,9 @@ export const TransactionsPage = () => {
             <label className="form-label">Financial Year</label>
             <select className="form-select" name="financialYear" onChange={handleFilterChange} value={filters.financialYear || ''}>
               <option value="">All</option>
-              <option value="2022-2023">2022-2023</option>
-              <option value="2023-2024">2023-2024</option>
-              <option value="2024-2025">2024-2025</option>
+              {financialYears.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
             </select>
           </div>
           <div className="col-md-2">

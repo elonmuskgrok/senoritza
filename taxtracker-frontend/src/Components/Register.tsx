@@ -5,7 +5,10 @@ import { authApi } from "../api/authApi";
 import { toast } from "react-toastify";
 
 const Register = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, watch, formState: { errors } } = useForm({
+    mode: 'onChange'
+  });
+  const password = watch("password");
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
@@ -52,7 +55,13 @@ const Register = () => {
                       type="text"
                       className={`form-control ${errors.name ? 'is-invalid' : ''}`}
                       placeholder="Enter your name"
-                      {...register("name", { required: "Name is required" })}
+                      {...register("name", { 
+                        required: "Name is required",
+                        pattern: {
+                          value: /^[A-Za-z]+( [A-Za-z]+){0,2}$/,
+                          message: "Name must contain 1-3 words, alphabets only, separated by single spaces."
+                        }
+                      })}
                     />
                     {errors.name && <div className="invalid-feedback">{errors.name.message as string}</div>}
                   </div>
@@ -63,9 +72,31 @@ const Register = () => {
                       type="email"
                       className={`form-control ${errors.email ? 'is-invalid' : ''}`}
                       placeholder="Enter your email"
-                      {...register("email", { required: "Email is required" })}
+                      {...register("email", { 
+                        required: "Email is required",
+                        pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: "Invalid email format" }
+                      })}
                     />
                     {errors.email && <div className="invalid-feedback">{errors.email.message as string}</div>}
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="col-md-12 mb-3">
+                    <label className="form-label">Mobile Number</label>
+                    <input
+                      type="tel"
+                      className={`form-control ${errors.mobileNumber ? 'is-invalid' : ''}`}
+                      placeholder="Enter mobile number"
+                      {...register("mobileNumber", { 
+                        required: "Mobile Number is required",
+                        pattern: {
+                          value: /^[6-9]\d{9}$/,
+                          message: "Mobile number must start with 6, 7, 8, or 9 and be 10 digits."
+                        }
+                      })}
+                    />
+                    {errors.mobileNumber && <div className="invalid-feedback">{errors.mobileNumber.message as string}</div>}
                   </div>
                 </div>
 
@@ -76,20 +107,29 @@ const Register = () => {
                       type="password"
                       className={`form-control ${errors.password ? 'is-invalid' : ''}`}
                       placeholder="Enter password"
-                      {...register("password", { required: "Password is required" })}
+                      {...register("password", { 
+                        required: "Password is required",
+                        pattern: {
+                          value: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*()_\-+=[\]{};:'",.<>/?\\|]).{7,20}$/,
+                          message: "Password must be 7-20 characters with at least one uppercase, lowercase, digit, and special character."
+                        }
+                      })}
                     />
                     {errors.password && <div className="invalid-feedback">{errors.password.message as string}</div>}
                   </div>
 
                   <div className="col-md-6 mb-3">
-                    <label className="form-label">Mobile Number</label>
+                    <label className="form-label">Confirm Password</label>
                     <input
-                      type="tel"
-                      className={`form-control ${errors.mobileNumber ? 'is-invalid' : ''}`}
-                      placeholder="Enter mobile number"
-                      {...register("mobileNumber", { required: "Mobile Number is required" })}
+                      type="password"
+                      className={`form-control ${errors.confirmPassword ? 'is-invalid' : ''}`}
+                      placeholder="Confirm password"
+                      {...register("confirmPassword", { 
+                        required: "Please confirm your password",
+                        validate: value => value === password || "Passwords do not match"
+                      })}
                     />
-                    {errors.mobileNumber && <div className="invalid-feedback">{errors.mobileNumber.message as string}</div>}
+                    {errors.confirmPassword && <div className="invalid-feedback">{errors.confirmPassword.message as string}</div>}
                   </div>
                 </div>
 
@@ -184,7 +224,13 @@ const Register = () => {
                     type="text"
                     className={`form-control ${errors.pincode ? 'is-invalid' : ''}`}
                     placeholder="PIN Code"
-                    {...register("pincode", { required: "PIN Code is required" })}
+                    {...register("pincode", { 
+                      required: "PIN Code is required",
+                      pattern: {
+                        value: /^\d{6}$/,
+                        message: "Pin code must be 6 digits."
+                      }
+                    })}
                   />
                   {errors.pincode && <div className="invalid-feedback">{errors.pincode.message as string}</div>}
                 </div>

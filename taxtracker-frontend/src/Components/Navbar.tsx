@@ -27,6 +27,13 @@ export const Navbar = () => {
               <Link to="/dashboard" className="btn btn-outline-light px-3 fw-semibold d-none d-md-inline-block">
                 Dashboard
               </Link>
+              <button 
+                className="btn btn-outline-light px-3 d-none d-md-inline-block" 
+                onClick={() => alert('Settings coming soon')}
+                title="Settings"
+              >
+                <i className="bi bi-gear-fill"></i>
+              </button>
               <button onClick={handleLogout} className="btn btn-light text-dark px-4 fw-semibold shadow-sm">
                 <i className="bi bi-box-arrow-right me-2"></i>Logout
               </button>

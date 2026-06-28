@@ -1,22 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { formApi } from '../api/formApi';
+import { transactionApi } from '../api/transactionApi';
 import { toast } from 'react-toastify';
 
 export const Form90cPart1Page = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [errorMsg, setErrorMsg] = useState('');
   const hasLoadedDraft = useRef(false);
   
+  const [financialYears, setFinancialYears] = useState<string[]>([]);
+  const [selectedFY, setSelectedFY] = useState<string>(location.state?.financialYear || '');
+
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const email = user.email;
 
-  const { register, control, handleSubmit, reset, formState: { errors } } = useForm({
+  const { register, control, handleSubmit, reset, getValues, setValue, formState: { errors } } = useForm({
     defaultValues: {
       name: '',
       mobileNumber: '',
-      financialYear: '',
+      financialYear: location.state?.financialYear || '',
       transactionHistory: [{ organizationName: '', amount: '', taxAmount: '0', type: 'TDS' }]
     }
   });
@@ -27,32 +32,63 @@ export const Form90cPart1Page = () => {
   });
 
   useEffect(() => {
-    // Fetch draft on mount
-    const fetchDraft = async () => {
+    const fetchYears = async () => {
       try {
-        if (email) {
-          const draft = await formApi.getForm(email);
-          if (draft && draft.status === 'DRAFT') {
-            reset({
-              name: draft.name || '',
-              mobileNumber: draft.mobileNumber || '',
-              financialYear: draft.financialYear || '',
-              transactionHistory: draft.transactionHistory && draft.transactionHistory.length > 0 
-                ? draft.transactionHistory 
-                : [{ organizationName: '', amount: '', taxAmount: '0', type: 'TDS' }]
-            });
-            if (!hasLoadedDraft.current) {
-              toast.info("Loaded your saved draft!");
-              hasLoadedDraft.current = true;
-            }
+        const years = await transactionApi.getAvailableFinancialYears();
+        let finalYears = [...years];
+        
+        const today = new Date();
+        const month = today.getMonth() + 1;
+        const year = today.getFullYear();
+        const currentFY = month >= 4 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
+        
+        if (!finalYears.includes(currentFY)) {
+          finalYears.unshift(currentFY);
+        }
+        
+        setFinancialYears(finalYears);
+        
+        if (!selectedFY && finalYears.length > 0) {
+          setSelectedFY(finalYears[0]);
+          setValue('financialYear', finalYears[0]);
+        }
+      } catch (e) {
+        console.error("Failed to load years", e);
+      }
+    };
+    fetchYears();
+  }, [selectedFY, setValue]);
+
+  useEffect(() => {
+    const fetchDraft = async () => {
+      if (!email || !selectedFY) return;
+      try {
+        const draft = await formApi.getForm(selectedFY);
+        if (draft && draft.status === 'DRAFT') {
+          reset({
+            name: draft.name || '',
+            mobileNumber: draft.mobileNumber || '',
+            financialYear: selectedFY,
+            transactionHistory: draft.transactionHistory && draft.transactionHistory.length > 0 
+              ? draft.transactionHistory 
+              : [{ organizationName: '', amount: '', taxAmount: '0', type: 'TDS' }]
+          });
+          if (!hasLoadedDraft.current) {
+            toast.info(`Loaded your saved draft for FY ${selectedFY}!`);
+            hasLoadedDraft.current = true;
           }
         }
       } catch (err: any) {
-        // If no draft exists or error, ignore
+        reset({
+          name: getValues('name'), 
+          mobileNumber: getValues('mobileNumber'),
+          financialYear: selectedFY,
+          transactionHistory: [{ organizationName: '', amount: '', taxAmount: '0', type: 'TDS' }]
+        });
       }
     };
     fetchDraft();
-  }, [email, reset]);
+  }, [email, selectedFY, reset, getValues]);
 
   const saveForm = async (data: any, navigateToNext: boolean) => {
     try {
@@ -64,34 +100,30 @@ export const Form90cPart1Page = () => {
           taxAmount: parseFloat(t.taxAmount) || 0
         }))
       };
-      const response = await formApi.saveDraft(formattedData);
       
+      let response;
       if (navigateToNext) {
+        response = await formApi.saveForm(formattedData);
         navigate('/form90c/upload', { state: { formId: response.formId } });
       } else {
+        response = await formApi.saveDraft(formattedData);
         toast.success("Draft saved successfully!");
       }
     } catch (err: any) {
       if (err.response?.data?.fieldErrors) {
         setErrorMsg(err.response.data.fieldErrors.map((f: any) => f.message).join(', '));
       } else {
-        setErrorMsg(err.response?.data?.message || 'Form data is incomplete');
+        setErrorMsg(err.response?.data?.message || 'Failed to save form');
       }
-      toast.error("Failed to save draft");
+      toast.error(navigateToNext ? "Failed to save and continue" : "Failed to save draft");
     }
   };
 
-  const onSaveDraft = (data: any) => saveForm(data, false);
-  const onSaveAndNext = (data: any) => saveForm(data, true);
-
-  // Custom validation for YYYY-YYYY format
-  const validateFinancialYear = (val: string) => {
-    const regex = /^\d{4}-\d{4}$/;
-    if (!regex.test(val)) return "Format must be YYYY-YYYY";
-    const [start, end] = val.split('-');
-    if (parseInt(end) - parseInt(start) !== 1) return "Must be exactly 1 year apart (e.g., 2022-2023)";
-    return true;
+  const onSaveDraft = () => {
+    const data = getValues();
+    saveForm(data, false);
   };
+  const onSaveAndNext = (data: any) => saveForm(data, true);
 
   return (
     <div className="container mt-5">
@@ -121,14 +153,20 @@ export const Form90cPart1Page = () => {
           </div>
           <div className="col-md-4">
             <label className="form-label">Financial Year</label>
-            <input 
-              className={`form-control ${errors.financialYear ? 'is-invalid' : ''}`} 
-              placeholder="YYYY-YYYY" 
+            <select
+              className={`form-select ${errors.financialYear ? 'is-invalid' : ''}`}
               {...register('financialYear', { 
                 required: "Financial year is required",
-                validate: validateFinancialYear
-              })} 
-            />
+                onChange: (e) => {
+                  setSelectedFY(e.target.value);
+                  hasLoadedDraft.current = false;
+                }
+              })}
+            >
+              {financialYears.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
             {errors.financialYear && <div className="invalid-feedback">{errors.financialYear.message as string}</div>}
           </div>
         </div>
@@ -195,10 +233,11 @@ export const Form90cPart1Page = () => {
         </div>
 
         <div className="d-flex gap-2">
-          <button type="button" className="btn btn-secondary" onClick={handleSubmit(onSaveDraft)}>Save Draft</button>
+          <button type="button" className="btn btn-secondary" onClick={onSaveDraft}>Save Draft</button>
           <button type="button" className="btn btn-primary" onClick={handleSubmit(onSaveAndNext)}>Save & Continue</button>
         </div>
       </form>
     </div>
   );
 };
+

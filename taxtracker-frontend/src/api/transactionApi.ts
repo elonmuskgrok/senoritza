@@ -15,5 +15,15 @@ export const transactionApi = {
       responseType: 'blob'
     });
     return response.data;
+  },
+  getDashboardSummary: async (financialYear: string) => {
+    const response = await axiosClient.get('/transactions/dashboard-summary', {
+      params: { financialYear }
+    });
+    return response.data;
+  },
+  getAvailableFinancialYears: async () => {
+    const response = await axiosClient.get('/transactions/financial-years');
+    return response.data;
   }
 };
