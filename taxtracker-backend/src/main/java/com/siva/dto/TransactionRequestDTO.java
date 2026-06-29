@@ -21,6 +21,7 @@ public class TransactionRequestDTO {
     private BigDecimal taxAmount;
 
     @NotBlank(message = "Please provide a valid Type")
+    @Pattern(regexp = "^(TDS|TCS)$", message = "Type must be TDS or TCS")
     private String type;
 
     @NotBlank(message = "Please provide a valid Organization Name")

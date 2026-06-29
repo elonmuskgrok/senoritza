@@ -116,4 +116,29 @@ public class AuthServiceTest {
         RuntimeException ex = assertThrows(RuntimeException.class, () -> authService.login(request));
         assertEquals("User not found", ex.getMessage());
     }
+    @Test
+    void testLogin_BadPassword() {
+        LoginRequestDTO request = new LoginRequestDTO();
+        request.setEmail("test@test.com");
+        request.setPassword("wrongpassword");
+
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new org.springframework.security.authentication.BadCredentialsException("Bad credentials"));
+
+        org.springframework.security.authentication.BadCredentialsException ex = assertThrows(
+                org.springframework.security.authentication.BadCredentialsException.class, 
+                () -> authService.login(request)
+        );
+        assertEquals("Bad credentials", ex.getMessage());
+    }
+
+    @Test
+    void testRegister_NullRequest() {
+        assertThrows(NullPointerException.class, () -> authService.register(null));
+    }
+
+    @Test
+    void testLogin_NullRequest() {
+        assertThrows(NullPointerException.class, () -> authService.login(null));
+    }
 }

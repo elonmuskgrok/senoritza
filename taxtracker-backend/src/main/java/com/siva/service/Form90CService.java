@@ -1,7 +1,6 @@
 package com.siva.service;
 
 import com.siva.dto.Form90CRequestDTO;
-import com.siva.dto.Form90CDraftRequestDTO;
 import com.siva.dto.SubmissionRequestDTO;
 import com.siva.dto.UploadRequestDTO;
 import com.siva.dto.Form90CResponseDTO;
@@ -35,7 +34,7 @@ public class Form90CService {
     private final UserRepository userRepository;
 
     @Transactional
-    public Map<String, Object> saveDraft(String email, Form90CDraftRequestDTO request) {
+    public Map<String, Object> saveDraft(String email, Form90CRequestDTO request) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 

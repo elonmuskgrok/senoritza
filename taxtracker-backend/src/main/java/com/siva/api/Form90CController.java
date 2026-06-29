@@ -1,7 +1,6 @@
 package com.siva.api;
 
 import com.siva.dto.Form90CRequestDTO;
-import com.siva.dto.Form90CDraftRequestDTO;
 import com.siva.dto.SubmissionRequestDTO;
 import com.siva.dto.UploadRequestDTO;
 import com.siva.dto.Form90CResponseDTO;
@@ -22,7 +21,7 @@ public class Form90CController {
 
     @PostMapping("/api/forms/90c/draft")
     public ResponseEntity<Map<String, Object>> saveDraft(
-            @RequestBody Form90CDraftRequestDTO request,
+            @RequestBody Form90CRequestDTO request,
             Authentication authentication) {
         String email = authentication.getName();
         return ResponseEntity.ok(form90cService.saveDraft(email, request));

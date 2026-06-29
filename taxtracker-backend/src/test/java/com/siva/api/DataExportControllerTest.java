@@ -120,4 +120,44 @@ class DataExportControllerTest {
         assertTrue(response.getBody().length > 0);
         assertTrue(response.getHeaders().getContentType().toString().contains("spreadsheetml"));
     }
+    @Test
+    void downloadTransactions_Exception_returnsInternalServerError() throws Exception {
+        when(transactionService.getAllTransactions(anyString(), any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("Database error"));
+
+        assertThrows(RuntimeException.class, () -> dataExportController.downloadTransactions(
+                "JSON", null, null, null, null, authentication));
+    }
+
+    @Test
+    void downloadTransactions_pdfFormat_WithFilters() throws Exception {
+        when(transactionService.getAllTransactions(eq("test@test.com"), eq("2023-2024"), eq(5), eq("TDS"), eq("Org")))
+                .thenReturn(getMockTransactions());
+
+        ResponseEntity<byte[]> response = dataExportController.downloadTransactions(
+                "PDF", "2023-2024", 5, "TDS", "Org", authentication);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().length > 0);
+        assertEquals("application/pdf", response.getHeaders().getContentType().toString());
+    }
+    @Test
+    void downloadTransactions_MissingFormat_returnsBadRequest() throws Exception {
+        // Calling with null format should throw an exception due to @RequestParam(required = true)
+        // Since we are mocking directly, we test the logic inside the method
+        // But format is validated inside the method logic for allowed formats
+        ResponseEntity<byte[]> response = dataExportController.downloadTransactions(
+                null, null, null, null, null, authentication);
+        
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("Unsupported format", new String(response.getBody()));
+    }
+
+    @Test
+    void downloadTransactions_NullAuthentication_throwsException() {
+        assertThrows(NullPointerException.class, () -> dataExportController.downloadTransactions(
+                "JSON", null, null, null, null, null));
+    }
 }

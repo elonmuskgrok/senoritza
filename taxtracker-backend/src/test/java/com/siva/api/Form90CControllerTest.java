@@ -47,7 +47,7 @@ public class Form90CControllerTest {
     @Test
     @WithMockUser(username = "test@test.com")
     void testSaveDraft_Http200() throws Exception {
-        com.siva.dto.Form90CDraftRequestDTO request = new com.siva.dto.Form90CDraftRequestDTO();
+        com.siva.dto.Form90CRequestDTO request = new com.siva.dto.Form90CRequestDTO();
         request.setFinancialYear("2023-2024");
         request.setName("Test");
         request.setMobileNumber("1234567890");
@@ -56,7 +56,7 @@ public class Form90CControllerTest {
         Map<String, Object> response = new HashMap<>();
         response.put("formId", 1);
         
-        when(form90cService.saveDraft(any(), any(com.siva.dto.Form90CDraftRequestDTO.class))).thenReturn(response);
+        when(form90cService.saveDraft(any(), any(com.siva.dto.Form90CRequestDTO.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/forms/90c/draft")
                 .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList()))
@@ -140,5 +140,76 @@ public class Form90CControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
+    }
+    @Test
+    @WithMockUser(username = "test@test.com")
+    void testSaveForm_Http400_ValidationFailed() throws Exception {
+        Form90CRequestDTO request = new Form90CRequestDTO();
+        // Missing name and mobileNumber
+        request.setFinancialYear("2023-2024");
+        
+        mockMvc.perform(post("/api/forms/90c")
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "test@test.com")
+    void testUploadDocument_Http400_ValidationFailed() throws Exception {
+        com.siva.dto.UploadRequestDTO request = new com.siva.dto.UploadRequestDTO();
+        request.setFormId(1L);
+        // Missing name and data
+        
+        mockMvc.perform(post("/api/uploads")
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "test@test.com")
+    void testGetForm_Http400_MissingFinancialYear() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/forms/90c")
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList())))
+                // Missing param
+                .andExpect(status().isBadRequest());
+    }
+    @Test
+    @WithMockUser(username = "test@test.com")
+    void testSaveForm_Failure_Runtime() throws Exception {
+        Form90CRequestDTO request = new Form90CRequestDTO();
+        request.setFinancialYear("2023-2024");
+        request.setName("Test");
+        request.setMobileNumber("9876543210");
+        com.siva.dto.Form90CRequestDTO.TransactionHistoryRequest tx = new com.siva.dto.Form90CRequestDTO.TransactionHistoryRequest();
+        tx.setOrganizationName("Test Org");
+        tx.setAmount(new java.math.BigDecimal("1000"));
+        tx.setTaxAmount(new java.math.BigDecimal("100"));
+        tx.setType("TDS");
+        request.setTransactionHistory(java.util.Collections.singletonList(tx));
+        
+        when(form90cService.saveForm(any(), any())).thenThrow(new RuntimeException("Error saving form"));
+
+        mockMvc.perform(post("/api/forms/90c")
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    @WithMockUser(username = "test@test.com")
+    void testSubmit_Http400_ValidationFailed() throws Exception {
+        SubmissionRequestDTO request = new SubmissionRequestDTO();
+        // formId is null
+
+        mockMvc.perform(post("/api/submissions")
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
     }
 }

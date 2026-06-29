@@ -80,4 +80,132 @@ public class AuthControllerTest {
                 .andExpect(jsonPath("$.token").value("mockJwt"))
                 .andExpect(jsonPath("$.email").value("test@test.com"));
     }
+    @Test
+    void testRegister_Http400_ValidationFailed_Email() throws Exception {
+        RegisterRequestDTO request = new RegisterRequestDTO();
+        request.setEmail("invalid-email");
+        request.setPassword("Password@123");
+        request.setName("Test");
+        request.setMobileNumber("9876543210");
+        request.setAddressLine1("Line1");
+
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testRegister_Http400_ValidationFailed_Password() throws Exception {
+        RegisterRequestDTO request = new RegisterRequestDTO();
+        request.setEmail("test@test.com");
+        request.setPassword("short");
+        request.setName("Test");
+        request.setMobileNumber("9876543210");
+        request.setAddressLine1("Line1");
+
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testLogin_Http400_ValidationFailed_Email() throws Exception {
+        LoginRequestDTO request = new LoginRequestDTO();
+        request.setEmail("invalid-email");
+        request.setPassword("password");
+
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testLogin_Http400_ValidationFailed_Password() throws Exception {
+        LoginRequestDTO request = new LoginRequestDTO();
+        request.setEmail("test@test.com");
+        request.setPassword(""); // blank password
+
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+    @Test
+    void testLogin_Failure_BadCredentials() throws Exception {
+        LoginRequestDTO request = new LoginRequestDTO();
+        request.setEmail("test@test.com");
+        request.setPassword("wrongpassword");
+
+        when(authService.login(any(LoginRequestDTO.class))).thenThrow(new com.siva.exception.TaxTrackerException("Invalid email or password"));
+
+        mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testRegister_Failure_EmailAlreadyExists() throws Exception {
+        RegisterRequestDTO request = new RegisterRequestDTO();
+        request.setEmail("test@test.com");
+        request.setPassword("Password@123");
+        request.setName("Test");
+        request.setMobileNumber("9876543210");
+        request.setAddressLine1("Line1");
+
+        org.mockito.Mockito.doThrow(new com.siva.exception.TaxTrackerException("Email is already registered!"))
+                .when(authService).register(any(RegisterRequestDTO.class));
+
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+    @Test
+    void testRegister_Http400_ValidationFailed_Name() throws Exception {
+        RegisterRequestDTO request = new RegisterRequestDTO();
+        request.setEmail("test@test.com");
+        request.setPassword("Password@123");
+        request.setName("123"); // Invalid name
+        request.setMobileNumber("9876543210");
+        request.setAddressLine1("Line1");
+
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testRegister_Http400_ValidationFailed_MobileNumber() throws Exception {
+        RegisterRequestDTO request = new RegisterRequestDTO();
+        request.setEmail("test@test.com");
+        request.setPassword("Password@123");
+        request.setName("Test");
+        request.setMobileNumber("123"); // Invalid mobile
+        request.setAddressLine1("Line1");
+
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testRegister_Http400_ValidationFailed_Address() throws Exception {
+        RegisterRequestDTO request = new RegisterRequestDTO();
+        request.setEmail("test@test.com");
+        request.setPassword("Password@123");
+        request.setName("Test");
+        request.setMobileNumber("9876543210");
+        // Missing AddressLine1
+
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
 }

@@ -40,7 +40,7 @@ public class Form90CServiceTest {
 
     @Test
     void testSaveDraft_Success() {
-        com.siva.dto.Form90CDraftRequestDTO request = new com.siva.dto.Form90CDraftRequestDTO();
+        com.siva.dto.Form90CRequestDTO request = new com.siva.dto.Form90CRequestDTO();
         request.setFinancialYear("2023-2024");
         request.setTransactionHistory(new ArrayList<>());
 
@@ -242,5 +242,30 @@ public class Form90CServiceTest {
 
         Map<String, Object> response = form90cService.uploadDocument("test@test.com", request);
         assertEquals(55L, response.get("documentId"));
+    }
+    @Test
+    void testSaveForm_Failure_UserNotFound() {
+        Form90CRequestDTO request = new Form90CRequestDTO();
+        request.setFinancialYear("2023-2024");
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        assertThrows(RuntimeException.class, () -> form90cService.saveForm("unknown@test.com", request));
+    }
+
+    @Test
+    void testUploadDocument_Failure_UserNotFound() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        assertThrows(RuntimeException.class, () -> form90cService.uploadDocument("unknown@test.com", new com.siva.dto.UploadRequestDTO()));
+    }
+
+    @Test
+    void testSubmitForm_Failure_UserNotFound() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        assertThrows(RuntimeException.class, () -> form90cService.submitForm("unknown@test.com", new SubmissionRequestDTO()));
+    }
+
+    @Test
+    void testSaveDraft_UserNotFound() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        assertThrows(RuntimeException.class, () -> form90cService.saveDraft("unknown@test.com", new Form90CRequestDTO()));
     }
 }

@@ -200,4 +200,43 @@ public class TransactionServiceTest {
         assertEquals(1, years.size());
         assertEquals("2023-2024", years.get(0));
     }
+    @Test
+    void testAddTransaction_NullRequest() {
+        assertThrows(RuntimeException.class, () -> transactionService.addTransaction("test@test.com", null));
+    }
+
+    @Test
+    void testGetDashboardSummary_Failure_UserNotFound() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        assertThrows(RuntimeException.class, () -> transactionService.getDashboardSummary("unknown@test.com", "2023-2024"));
+    }
+
+    @Test
+    void testGetAvailableFinancialYears_EmptyList() {
+        User user = new User();
+        user.setId(1L);
+        when(userRepository.findByEmail("test@test.com")).thenReturn(Optional.of(user));
+        when(transactionRepository.findDistinctFinancialYearsByUserId(1L)).thenReturn(List.of());
+
+        List<String> years = transactionService.getAvailableFinancialYears("test@test.com");
+        assertTrue(years.isEmpty());
+    }
+
+    @Test
+    void testGetTransactions_UserNotFound() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        assertThrows(RuntimeException.class, () -> transactionService.getTransactions("unknown@test.com", null, null, null, null, 0, 10));
+    }
+
+    @Test
+    void testGetAllTransactions_UserNotFound() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        assertThrows(RuntimeException.class, () -> transactionService.getAllTransactions("unknown@test.com", null, null, null, null));
+    }
+
+    @Test
+    void testGetAvailableFinancialYears_UserNotFound() {
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        assertThrows(RuntimeException.class, () -> transactionService.getAvailableFinancialYears("unknown@test.com"));
+    }
 }

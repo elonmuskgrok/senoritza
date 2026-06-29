@@ -107,4 +107,109 @@ public class TransactionControllerTest {
                 .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList())))
                 .andExpect(status().isOk());
     }
+    @Test
+    @WithMockUser(username = "test@test.com")
+    void testAddTransaction_Http400_NegativeAmount() throws Exception {
+        TransactionRequestDTO request = new TransactionRequestDTO();
+        request.setAmount(new BigDecimal("-100.00")); // negative
+        request.setTransactionDate(LocalDate.now());
+        request.setTaxAmount(new BigDecimal("10.00"));
+        request.setType("TDS");
+        request.setOrganizationName("Test Org");
+
+        mockMvc.perform(post("/api/transactions")
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "test@test.com")
+    void testAddTransaction_Http400_InvalidType() throws Exception {
+        TransactionRequestDTO request = new TransactionRequestDTO();
+        request.setAmount(new BigDecimal("100.00"));
+        request.setTransactionDate(LocalDate.now());
+        request.setTaxAmount(new BigDecimal("10.00"));
+        request.setType("INVALID"); // Not TDS or TCS
+        request.setOrganizationName("Test Org");
+
+        mockMvc.perform(post("/api/transactions")
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "test@test.com")
+    void testGetDashboardSummary_Http400_MissingFinancialYear() throws Exception {
+        // Missing the required financialYear param
+        mockMvc.perform(get("/api/transactions/dashboard-summary")
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList())))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "test@test.com")
+    void testGetAvailableFinancialYears_Http200_Empty() throws Exception {
+        when(transactionService.getAvailableFinancialYears(any())).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/transactions/financial-years")
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList())))
+                .andExpect(status().isOk());
+    }
+    @Test
+    @WithMockUser(username = "test@test.com")
+    void testGetTransactions_WithFilters() throws Exception {
+        TransactionResponseDTO response = TransactionResponseDTO.builder().id(1L).build();
+        Page<TransactionResponseDTO> page = new PageImpl<>(List.of(response));
+
+        when(transactionService.getTransactions(eq("test@test.com"), eq("2023-2024"), eq(5), eq("TDS"), eq("Org"), eq(1), eq(20)))
+                .thenReturn(page);
+
+        mockMvc.perform(get("/api/transactions")
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList()))
+                .param("financialYear", "2023-2024")
+                .param("month", "5")
+                .param("type", "TDS")
+                .param("organizationName", "Org")
+                .param("pageNumber", "1")
+                .param("pageSize", "20"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "test@test.com")
+    void testGetTransactions_MissingParams_UsesDefaults() throws Exception {
+        TransactionResponseDTO response = TransactionResponseDTO.builder().id(1L).build();
+        Page<TransactionResponseDTO> page = new PageImpl<>(List.of(response));
+
+        // When missing, it should pass nulls and defaults for paging
+        when(transactionService.getTransactions(eq("test@test.com"), isNull(), isNull(), isNull(), isNull(), eq(0), eq(10)))
+                .thenReturn(page);
+
+        mockMvc.perform(get("/api/transactions")
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList())))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "test@test.com")
+    void testAddTransaction_Failure_Runtime() throws Exception {
+        TransactionRequestDTO request = new TransactionRequestDTO();
+        request.setAmount(new BigDecimal("100.00"));
+        request.setTransactionDate(LocalDate.now());
+        request.setTaxAmount(new BigDecimal("10.00"));
+        request.setType("TDS");
+        request.setOrganizationName("Test Org");
+
+        when(transactionService.addTransaction(any(), any())).thenThrow(new RuntimeException("Database error"));
+
+        mockMvc.perform(post("/api/transactions")
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("test@test.com", "password", java.util.Collections.emptyList()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
 }
